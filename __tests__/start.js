@@ -50,6 +50,10 @@
 //     .promise();
 // };
 
+const utils = require("../utils");
+
 module.exports = async () => {
-  console.log("setup!");
+  process.env = Object.assign(process.env, {
+    PASSWORD: "password"
+  });
 };

@@ -1,35 +1,25 @@
-// DO NOT PUBLISH - password saved in commit history
-
-const ENDPOINT = "58yojgvxyi.execute-api.us-east-1.amazonaws.com/dev";
-const PASSWORD = process.env.PASSWORD;
-
 const AWS = require("aws-sdk");
 require("aws-sdk/clients/apigatewaymanagementapi");
+const utils = require("./utils");
+const PASSWORD = process.env.PASSWORD;
 
-let websockets = new AWS.ApiGatewayManagementApi({
-  apiVersion: "2018-11-29",
-  endpoint: ENDPOINT
-});
-
-let resReply = (type, result, code = 200) => ({
-  statusCode: code,
-  body: JSON.stringify({
-    type,
-    result
-  })
-});
-
-let invalidReply = msg => resReply("error", msg || "invalid", 400);
+let ws = null;
 
 let userHandler = (event, body) => {
-  return resReply("user", "hello");
+  return utils.JSONReply("user", "hello");
 };
 
 let adminHandler = (event, body) => {
-  return resReply("admin", "hello");
+  return utils.JSONReply("admin", "hello");
 };
 
 exports.handler = async event => {
+  if (!ws) {
+    ws = new AWS.ApiGatewayManagementApi({
+      apiVersion: "2018-11-29",
+      endpoint: event.requestContext.domainName + "/" + event.requestContext.stage
+    });
+  }
   let body = null;
   try {
     body = JSON.parse(event.body);
@@ -41,6 +31,6 @@ exports.handler = async event => {
       return userHandler(event, body);
     }
   } catch (err) {
-    return invalidReply();
+    return utils.JSONError();
   }
 };

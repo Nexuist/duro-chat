@@ -5,13 +5,17 @@
   "jest": {
     "testEnvironment": "node",
     "globalSetup": "./__tests__/start.js",
+    "setupFiles": [
+      "./__tests__/setup.js"
+    ],
     "testMatch": [
       "**/?(*.)+(spec|test).js?(x)"
     ]
   },
   "devDependencies": {
     "jest": "^23.0.0",
-    "jest-cli": "^24.7.1"
+    "jest-cli": "^24.7.1",
+    "serverless-localstack": "^0.4.12"
   },
   "dependencies": {
     "aws-sdk": "^2.437.0"
