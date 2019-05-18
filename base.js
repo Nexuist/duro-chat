@@ -4,13 +4,30 @@ const utils = require("./utils");
 const PASSWORD = process.env.PASSWORD;
 
 let ws = null;
+let { JSONReply, JSONError } = utils;
 
-let userHandler = (event, body) => {
-  return utils.JSONReply("user", "hello");
+let userHandler = async (event, body) => {
+  switch (body.action) {
+    case "hello":
+      let lastConnected = (await utils.andiItem()).lastConnected.N;
+      return JSONReply("lastConnected", lastConnected);
+    case "register":
+      if (!body.nickname || !body.email) return JSONError();
+      utils.createConversation(body.uuid, body.nickname, body.email);
+      return JSONReply("welcome");
+    case "list":
+      return JSONReply("history", await utils.getAllMessagesWith(body.uuid));
+    case "send":
+      // TODO: refactor utils to use params instead of event/body
+      if (!body.msg) return JSONError();
+      await utils.addMessageToConversation(event, body);
+      let sent = await utils.sendResponseToAndi(event, body, ws);
+      return sent ? JSONReply("sent") : JSONReply("sendError");
+  }
 };
 
 let adminHandler = (event, body) => {
-  return utils.JSONReply("admin", "hello");
+  return JSONReply("admin", "hello");
 };
 
 exports.handler = async event => {
@@ -31,6 +48,6 @@ exports.handler = async event => {
       return userHandler(event, body);
     }
   } catch (err) {
-    return utils.JSONError();
+    return JSONError();
   }
 };

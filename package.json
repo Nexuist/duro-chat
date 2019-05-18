@@ -4,7 +4,7 @@
   },
   "jest": {
     "testEnvironment": "node",
-    "globalSetup": "./__tests__/start.js",
+    "globalSetup": "./__tests__/envSetup.js",
     "setupFiles": [
       "./__tests__/setup.js"
     ],
