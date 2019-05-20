@@ -15,8 +15,6 @@ let JSONReply = (type, result, code = 200) => ({
   })
 });
 
-//       await utils.addConversationToUnreadList(body.uuid);
-
 let JSONError = msg => JSONReply("error", msg || "invalid");
 
 let andiKey = {
@@ -30,25 +28,58 @@ let andiItem = async () => {
   })).Item;
 };
 
-let createConversation = async (uuid, nickname, email) => {};
+/*
+  thoughts to consider when actually implementing methods:
+  - should addMessageToConversation have such generic arguments? probably not
+  - why is there a markRead when there's no markUnread?
+  - addMessageToConversation is used in both user/admin handlers and has to handle the difference itself; why are there two different send methods then?
+  ideas:
+  - make addMessageToConversation have more specific arguments once an initial implementation is made
+  - have only one send method with a flag to determine who it's to
+  
+*/
+
+let createConversation = async (uuid, nickname, email) => {
+  // pass
+};
 
 let getAllMessagesWith = async uuid => {
   // getMessages
 };
 
-let addToUnread = async uuid => {
-  // storeUUID
+let addMessageToConversation = async (event, body) => {
+  // pass
+  // add to unread: utils.addConversationToUnreadList(body.uuid);
+};
+
+let markRead = async uuid => {
+  // pass
+};
+
+let updateLastConnectedTime = async () => {
+  // pass
 };
 
 let sendResponseToAndi = async (event, body, ws) => {
   // reply
+  // returns bool
+};
+
+let sendReponseToRecipient = async (event, body, ws) => {
+  // pass
 };
 
 module.exports = {
   JSONReply,
   JSONError,
   dynamo,
-  andiItem
+  andiItem,
+  createConversation,
+  getAllMessagesWith,
+  markRead,
+  updateLastConnectedTime,
+  sendResponseToAndi,
+  sendResponseToRecipient
 };
 
 // let reply = async (connection, body, ws) => {
