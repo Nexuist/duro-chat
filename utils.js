@@ -1,8 +1,10 @@
 const AWS = require("aws-sdk");
-const DDB = new AWS.DynamoDB({ apiVersion: "2012-10-08", region: "us-east-1" });
 
+let DDB = new AWS.DynamoDB({ apiVersion: "2012-10-08", region: "us-east-1" });
+
+// Use module.exports.DDB so DDB can be swapped out at test time
 let dynamo = async (action, params) =>
-  await DDB[action]({
+  await module.exports.DDB[action]({
     TableName: "DuroLiveChat",
     ...params
   }).promise();
@@ -65,13 +67,14 @@ let sendResponseToAndi = async (event, body, ws) => {
   // returns bool
 };
 
-let sendReponseToRecipient = async (event, body, ws) => {
+let sendResponseToRecipient = async (event, body, ws) => {
   // pass
 };
 
 module.exports = {
   JSONReply,
   JSONError,
+  DDB,
   dynamo,
   andiItem,
   createConversation,
