@@ -3,7 +3,6 @@ Oops
 
 /*
   - build admin side of things
-  - add action for making a new uuid
   - integration test suite for utils
   - actually publish this thing
  */

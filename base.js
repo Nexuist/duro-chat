@@ -27,7 +27,12 @@ let userHandler = async (event, body) => {
 };
 
 let adminHandler = (event, body) => {
-  return JSONReply("admin", "hello");
+  switch (
+    body.action
+    // add test suite first
+    // integration tests for utils
+  ) {
+  }
 };
 
 exports.handler = async event => {
