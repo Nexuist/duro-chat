@@ -26,12 +26,23 @@ let userHandler = async (event, body) => {
   }
 };
 
-let adminHandler = (event, body) => {
-  switch (
-    body.action
-    // add test suite first
-    // integration tests for utils
-  ) {
+let adminHandler = async (event, body) => {
+  switch (body.action) {
+    case "hello":
+      await utils.updateLastConnectedTime();
+      return JSONReply("andiItem", await utils.andiItem());
+    case "ping":
+      await utils.updateLastConnectedTime();
+      return JSONReply("pong");
+    case "list":
+      if (!body.for) return JSONError();
+      await utils.markRead(body.for);
+      return JSONReply("history", await utils.getAllMessagesWith(body.for));
+    case "send":
+      if (!body.msg || !body.for) return JSONError();
+      await utils.addMessageToConversation(event, body);
+      let sent = await utils.sendResponseToRecipient(event, body, ws);
+      return sent ? JSONReply("sent") : JSONReply("sendError");
   }
 };
 

@@ -1,13 +1,14 @@
 const utils = require("../utils");
 
 const { call, calls, invalidReply } = lambda;
+
+const andiItem = {
+  lastConnected: {
+    N: 0
+  }
+};
 describe("base", () => {
   beforeAll(() => {
-    let andiItem = {
-      lastConnected: {
-        N: 0
-      }
-    };
     utils.andiItem = jest.fn(async () => andiItem);
   });
   it("errors if you send nothing", async () => {
@@ -30,6 +31,7 @@ describe("base", () => {
     expect(results).toEqual([invalidReply, invalidReply, utils.JSONReply("lastConnected", 0)]);
   });
   it("requires a password for uuid 'andi'", async () => {
+    utils.updateLastConnectedTime = jest.fn();
     let results = await calls([
       {
         uuid: "andi",
@@ -47,5 +49,6 @@ describe("base", () => {
       }
     ]);
     expect(results).toEqual([invalidReply, invalidReply, utils.JSONReply("andiItem", andiItem)]);
+    expect(utils.updateLastConnectedTime).toHaveBeenCalledTimes(1);
   });
 });
