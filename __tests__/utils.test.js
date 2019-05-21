@@ -58,15 +58,16 @@ describe("utils", () => {
     expect(await utils.andiItem()).toEqual(andiItem);
   });
   test("createConversation creates a new conversation", async () => {
-    await utils.createConversation("bababooey", "baba", "booey@email.com", "connString", "127.0.0.1");
+    const testUUID = "bababooey-createConversation";
+    await utils.createConversation(testUUID, "baba", "booey@email.com", "connString", "127.0.0.1");
     let result = (await utils.dynamo("getItem", {
       Key: {
-        uuid: { S: "bababooey" },
+        uuid: { S: testUUID },
         timestamp: { N: "0" }
       }
     })).Item;
     expect(result).toEqual({
-      uuid: { S: "bababooey" },
+      uuid: { S: testUUID },
       timestamp: { N: "0" },
       nickname: { S: "baba" },
       email: { S: "booey@email.com" },
@@ -74,11 +75,7 @@ describe("utils", () => {
       ip: { S: "127.0.0.1" }
     });
     let andiItem = await utils.andiItem();
-    expect(andiItem.conversations.M).toEqual(
-      expect.objectContaining({
-        bababooey: { S: "baba" }
-      })
-    );
+    expect(andiItem.conversations.M[testUUID].S).toEqual("baba");
   });
   test("updateAdminMetadata updates the last connected time and connection string", async () => {
     let time = +new Date();
@@ -89,33 +86,37 @@ describe("utils", () => {
   });
   describe("markUUID", () => {
     it("adds the uuid to the unread list when unread is true", async () => {
+      const testUUID = "bababooey-markUUID";
       let oldAndiItem = await utils.andiItem();
-      await utils.markUUID("bababooster", true);
+      await utils.markUUID(testUUID, true);
       let newAndiItem = await utils.andiItem();
       expect(newAndiItem).not.toEqual(oldAndiItem);
-      expect(newAndiItem.unread.SS).toEqual(expect.arrayContaining(["bababooster"]));
+      expect(newAndiItem.unread.SS).toEqual(expect.arrayContaining([testUUID]));
     });
     it("removes the uuid from the unread list when unread is false", async () => {
-      await utils.markUUID("babaoooey", true);
-      await utils.markUUID("babaoooey", false);
+      const testUUID = "bababooey-markUUID-2";
+      await utils.markUUID(testUUID, true);
+      await utils.markUUID(testUUID, false);
       let andiItem = await utils.andiItem();
-      expect(andiItem.unread.SS).not.toEqual(expect.arrayContaining(["babaoooey"]));
+      expect(andiItem.unread.SS).not.toEqual(expect.arrayContaining([testUUID]));
     });
     it("doesn't error when marking read if the given uuid doesn't exist", async () => {
+      const testUUID = "bababooey-markUUID-3";
       let andiItem = await utils.andiItem();
       // must wrap code in a fn for toThrow to work properly
-      expect(async () => await utils.markUUID("booey", false)).not.toThrow();
+      expect(async () => await utils.markUUID(testUUID, false)).not.toThrow();
       expect(await utils.andiItem()).toEqual(andiItem);
     });
   });
   describe("addMessageToConversation", () => {
     it("adds a to type message if uuidFrom is not andi", async () => {
       // build a fake conversation
-      await utils.createConversation("bababooey2", "tester", "test@test.com", "testConnection", "127.0.0.1");
-      let time = await utils.addMessageToConversation("bababooey2", "andi", "testing message", "testConnection", "127.0.0.1");
+      const testUUID = "bababooey-addMessageToConversation-to";
+      await utils.createConversation(testUUID, "tester", "test@test.com", "testConnection", "127.0.0.1");
+      let time = await utils.addMessageToConversation(testUUID, "andi", "testing message", "testConnection", "127.0.0.1");
       let result = await utils.dynamo("getItem", {
         Key: {
-          uuid: { S: "bababooey2" },
+          uuid: { S: testUUID },
           timestamp: { N: time.toString() }
         }
       });
@@ -132,12 +133,13 @@ describe("utils", () => {
     });
     it("adds a from type message if uuidFrom is andi", async () => {
       // build a fake conversation
-      await utils.createConversation("bababooey3", "tester", "test@test.com", "testConnection", "127.0.0.1");
-      await utils.addMessageToConversation("babaooey3", "andi", "testing message", "testConnection", "127.0.0.1");
-      let time = await utils.addMessageToConversation("andi", "bababooey3", "hello", null, null);
+      const testUUID = "bababooey-addMessageToConversation-from";
+      await utils.createConversation(testUUID, "tester", "test@test.com", "testConnection", "127.0.0.1");
+      await utils.addMessageToConversation(testUUID, "andi", "testing message", "testConnection", "127.0.0.1");
+      let time = await utils.addMessageToConversation("andi", testUUID, "hello", null, null);
       let result = await utils.dynamo("getItem", {
         Key: {
-          uuid: { S: "bababooey3" },
+          uuid: { S: testUUID },
           timestamp: { N: time.toString() }
         }
       });
@@ -156,14 +158,16 @@ describe("utils", () => {
   describe("getAllMessagesWith", () => {
     it("returns the correct form of messages if the uuid exists", async () => {
       // build a fake conversation
-      await utils.createConversation("bababooey4", "tester", "test@test.com", "testConnection", "127.0.0.1");
-      await utils.addMessageToConversation("bababooey4", "andi", "testing message", "testConnection", "127.0.0.1");
-      await utils.addMessageToConversation("andi", "bababooey4", "hello", null, null);
-      let messages = await utils.getAllMessagesWith("bababooey4");
+      const testUUID = "bababooey-getAllMessagesWith";
+      await utils.createConversation(testUUID, "tester", "test@test.com", "testConnection", "127.0.0.1");
+      await utils.addMessageToConversation(testUUID, "andi", "testing message", "testConnection", "127.0.0.1");
+      await utils.addMessageToConversation("andi", testUUID, "hello", null, null);
+      let messages = await utils.getAllMessagesWith(testUUID);
       expect(messages.length).toEqual(2);
     });
     it("returns an empty list if the uuid does not exist", async () => {
-      expect(await utils.getAllMessagesWith("bababooey9")).toEqual([]);
+      const testUUID = "bababooey-impossible";
+      expect(await utils.getAllMessagesWith(testUUID)).toEqual([]);
     });
   });
   describe("sendMessageTo", () => {
