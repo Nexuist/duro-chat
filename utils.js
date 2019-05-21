@@ -45,8 +45,12 @@ let createConversation = async (uuid, nickname, email) => {
   // pass
 };
 
-let getAllMessagesWith = async uuid => {
-  // getMessages
+let markRead = async uuid => {
+  // pass
+};
+
+let updateLastConnectedTime = async () => {
+  // pass
 };
 
 let addMessageToConversation = async (event, body) => {
@@ -54,12 +58,8 @@ let addMessageToConversation = async (event, body) => {
   // add to unread: utils.addConversationToUnreadList(body.uuid);
 };
 
-let markRead = async uuid => {
-  // pass
-};
-
-let updateLastConnectedTime = async () => {
-  // pass
+let getAllMessagesWith = async uuid => {
+  // getMessages
 };
 
 let sendResponseToAndi = async (event, body, ws) => {
