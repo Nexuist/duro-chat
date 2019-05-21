@@ -109,9 +109,22 @@ describe("utils", () => {
     });
   });
   describe("addMessageToConversation", () => {
-    // pass
+    it("adds a from type message if uuidFrom is not andi", async () => {
+      // pass
+    });
+    it("adds a to type message if uuidFrom is andi", async () => {
+      // pass
+    });
   });
   describe("getAllMessagesWith", () => {
+    it("returns the correct form of messages if the uuid exists", async () => {
+      // pass
+    });
+    it("returns an empty list if the uuid does not exist", async () => {
+      // pass
+    });
+  });
+  describe("sendMessageTo", () => {
     // pass
   });
 });

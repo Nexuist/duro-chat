@@ -32,12 +32,7 @@ let andiItem = async () => {
 
 /*
   thoughts to consider when actually implementing methods:
-  - should addMessageToConversation have such generic arguments? probably not
-  - addMessageToConversation is used in both user/admin handlers and has to handle the difference itself; why are there two different send methods then?
-  ideas:
-  - make addMessageToConversation have more specific arguments once an initial implementation is made
-  - have only one send method with a flag to determine who it's to
-  
+  - have only one send method with a flag to determine who it's to  
 */
 
 let createConversation = async (uuid, nickname, email, connectionID, ipAddress) => {
@@ -86,13 +81,43 @@ let updateAdminMetadata = async connectionID =>
     }
   });
 
-let addMessageToConversation = async (event, body) => {
-  // pass
-  // add to unread: utils.addConversationToUnreadList(body.uuid);
+let addMessageToConversation = async (uuidFrom, uuidTo, msg, connectionID, ipAddress) => {
+  // assume message is from user to andi
+  let obj = {
+    uuid: uuidFrom,
+    timestamp: { N: `${+new Date()}` },
+    msg: { S: msg },
+    type: { S: "to" },
+    connection: { S: connectionID },
+    ip: { S: ipAddress }
+  };
+  if (uuidFrom == "andi") {
+    // message is from andi
+    obj.uuid.S = uuidTo;
+    obj.type.S = "from";
+    obj.connection.S = "admin";
+    obj.ip.S = "admin";
+  }
+  await dynamo("putItem", { Item: obj });
 };
 
 let getAllMessagesWith = async uuid => {
-  // getMessages
+  let query = await dynamo("query", {
+    KeyConditionExpression: "#uuid = :uuid",
+    ExpressionAttributeNames: {
+      "#uuid": "uuid"
+    },
+    ExpressionAttributeValues: {
+      ":uuid": uuid
+    }
+  });
+  if (query.Items.length == 0) return [];
+  return query.Items.map(item => ({
+    msg: item.msg.S,
+    type: item.type.S,
+    timestamp: item.timestamp.N,
+    connection: item.connection.S
+  }));
 };
 
 let sendResponseToAndi = async (event, body, ws) => {
