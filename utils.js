@@ -33,7 +33,6 @@ let andiItem = async () => {
 /*
   thoughts to consider when actually implementing methods:
   - should addMessageToConversation have such generic arguments? probably not
-  - why is there a markRead when there's no markUnread?
   - addMessageToConversation is used in both user/admin handlers and has to handle the difference itself; why are there two different send methods then?
   ideas:
   - make addMessageToConversation have more specific arguments once an initial implementation is made
@@ -41,17 +40,51 @@ let andiItem = async () => {
   
 */
 
-let createConversation = async (uuid, nickname, email) => {
-  // pass
+let createConversation = async (uuid, nickname, email, connectionID, ipAddress) => {
+  await dynamo("putItem", {
+    Item: {
+      uuid: { S: uuid },
+      timestamp: { N: "0" },
+      nickname: { S: nickname },
+      email: { S: email },
+      connection: { S: connectionID },
+      ip: { S: ipAddress }
+    }
+  });
+  await dynamo("updateItem", {
+    Key: andiKey,
+    UpdateExpression: "SET conversations.#uuid = :nickname",
+    ExpressionAttributeNames: { "#uuid": uuid },
+    ExpressionAttributeValues: { ":nickname": { S: nickname } }
+  });
 };
 
-let markRead = async uuid => {
-  // pass
+let markUUID = async (uuid, unread) => {
+  // remove from unread list by default
+  let updateExpression = "DELETE unread :uuid";
+  // add to unread list
+  if (unread) {
+    updateExpression = "ADD unread :uuid";
+  }
+  await dynamo("updateItem", {
+    Key: andiKey,
+    UpdateExpression: updateExpression,
+    ExpressionAttributeValues: { ":uuid": { SS: [uuid] } }
+  });
 };
 
-let updateLastConnectedTime = async () => {
-  // pass
-};
+// event.requestContext.connectionId
+
+let updateAdminMetadata = async connectionID =>
+  await dynamo("updateItem", {
+    Key: andiKey,
+    UpdateExpression: "SET #conn = :conn, lastConnected = :timestamp",
+    ExpressionAttributeNames: { "#conn": "connection" },
+    ExpressionAttributeValues: {
+      ":conn": { S: connectionID },
+      ":timestamp": { N: `${+new Date()}` }
+    }
+  });
 
 let addMessageToConversation = async (event, body) => {
   // pass
@@ -79,8 +112,8 @@ module.exports = {
   andiItem,
   createConversation,
   getAllMessagesWith,
-  markRead,
-  updateLastConnectedTime,
+  markUUID,
+  updateAdminMetadata,
   sendResponseToAndi,
   sendResponseToRecipient
 };
