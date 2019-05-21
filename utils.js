@@ -83,9 +83,10 @@ let updateAdminMetadata = async connectionID =>
 
 let addMessageToConversation = async (uuidFrom, uuidTo, msg, connectionID, ipAddress) => {
   // assume message is from user to andi
+  let time = +new Date();
   let obj = {
-    uuid: uuidFrom,
-    timestamp: { N: `${+new Date()}` },
+    uuid: { S: uuidFrom },
+    timestamp: { N: `${time}` },
     msg: { S: msg },
     type: { S: "to" },
     connection: { S: connectionID },
@@ -95,10 +96,11 @@ let addMessageToConversation = async (uuidFrom, uuidTo, msg, connectionID, ipAdd
     // message is from andi
     obj.uuid.S = uuidTo;
     obj.type.S = "from";
-    obj.connection.S = "admin";
-    obj.ip.S = "admin";
+    obj.connection.S = "andi";
+    obj.ip.S = "andi";
   }
   await dynamo("putItem", { Item: obj });
+  return time;
 };
 
 let getAllMessagesWith = async uuid => {
@@ -108,10 +110,11 @@ let getAllMessagesWith = async uuid => {
       "#uuid": "uuid"
     },
     ExpressionAttributeValues: {
-      ":uuid": uuid
+      ":uuid": { S: uuid }
     }
   });
   if (query.Items.length == 0) return [];
+  query.Items.shift(); // remove the initial conversation creation message
   return query.Items.map(item => ({
     msg: item.msg.S,
     type: item.type.S,
@@ -136,6 +139,7 @@ module.exports = {
   dynamo,
   andiItem,
   createConversation,
+  addMessageToConversation,
   getAllMessagesWith,
   markUUID,
   updateAdminMetadata,
