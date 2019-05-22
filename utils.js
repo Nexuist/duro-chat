@@ -123,13 +123,43 @@ let getAllMessagesWith = async uuid => {
   }));
 };
 
-let sendResponseToAndi = async (event, body, ws) => {
-  // reply
+let sendResponseToAndi = async (uuid, msg, ws) => {
   // returns bool
+  let andiConnectionID = (await utils.andiItem()).connection.S;
+  let obj = {
+    type: "reply",
+    uuid,
+    msg
+  };
+  try {
+    await ws
+      .postToConnection({
+        ConnectionId: andiConnectionID,
+        Data: JSON.stringify(obj)
+      })
+      .promise();
+    return true;
+  } catch (err) {
+    // notify17?
+    return false;
+  }
 };
 
-let sendResponseToRecipient = async (event, body, ws) => {
-  // pass
+let sendResponseToUUID = async (msg, connectionID, ws) => {
+  try {
+    await ws
+      .postToConnection({
+        ConnectionId: connectionID,
+        Data: JSON.stringify({
+          type: "reply",
+          msg
+        })
+      })
+      .promise();
+    return true;
+  } catch (err) {
+    return false;
+  }
 };
 
 module.exports = {
@@ -146,46 +176,3 @@ module.exports = {
   sendResponseToAndi,
   sendResponseToRecipient
 };
-
-// let reply = async (connection, body, ws) => {
-// try {
-//   await ws
-//     .postToConnection({
-//       ConnectionId: connection,
-//       Data: JSON.stringify(body)
-//     })
-//     .promise();
-//   return res("sent");
-// } catch (err) {
-//   return res("sendError");
-// }
-// };
-
-// let userHandler = async (event, body, ws) => {
-//   switch (body.action) {
-//     case "hello":
-//       let adminItem = await queries.adminItem();
-//       return res("lastConnected", adminItem ? adminItem.lastConnected.N : 0);
-//     case "list":
-//       let msgs = await queries.getMessages(body.uuid);
-//       return res("history", msgs);
-//     case "system":
-//     case "send":
-//       if (!body.nickname || !body.msg) return invalid();
-//       await queries.storeUUID(body);
-//       await queries.storeMessage(event, body);
-//       let connection = (await queries.adminItem()).connection.S;
-//       return await reply(
-//         connection,
-//         {
-//           type: "reply",
-//           uuid: body.uuid,
-//           msg: body.msg,
-//           nickname: body.nickname,
-//           email: body.email,
-//           connection: event.requestContext.connectionId
-//         },
-//         ws
-//       );
-//   }
-// };
