@@ -30,11 +30,6 @@ let andiItem = async () => {
   })).Item;
 };
 
-/*
-  thoughts to consider when actually implementing methods:
-  - have only one send method with a flag to determine who it's to  
-*/
-
 let createConversation = async (uuid, nickname, email, connectionID, ipAddress) => {
   await dynamo("putItem", {
     Item: {
@@ -67,8 +62,6 @@ let markUUID = async (uuid, unread) => {
     ExpressionAttributeValues: { ":uuid": { SS: [uuid] } }
   });
 };
-
-// event.requestContext.connectionId
 
 let updateAdminMetadata = async connectionID =>
   await dynamo("updateItem", {
@@ -123,41 +116,29 @@ let getAllMessagesWith = async uuid => {
   }));
 };
 
-let sendResponseToAndi = async (uuid, msg, ws) => {
-  // returns bool
-  let andiConnectionID = (await utils.andiItem()).connection.S;
+let sendResponseTo = async (connectionID, msg, ws, optionalUUID) => {
+  // assume message is from andi
   let obj = {
     type: "reply",
-    uuid,
     msg
   };
+  if (connectionID == "andi") {
+    obj.uuid = optionalUUID;
+    connectionID = (await andiItem()).connection.S;
+  }
   try {
     await ws
       .postToConnection({
-        ConnectionId: andiConnectionID,
+        ConnectionId: connectionID,
         Data: JSON.stringify(obj)
       })
       .promise();
     return true;
   } catch (err) {
-    // notify17?
-    return false;
-  }
-};
-
-let sendResponseToUUID = async (msg, connectionID, ws) => {
-  try {
-    await ws
-      .postToConnection({
-        ConnectionId: connectionID,
-        Data: JSON.stringify({
-          type: "reply",
-          msg
-        })
-      })
-      .promise();
-    return true;
-  } catch (err) {
+    if (connectionID == "andi") {
+      // notify17?
+    }
+    console.log(err);
     return false;
   }
 };
@@ -173,6 +154,5 @@ module.exports = {
   getAllMessagesWith,
   markUUID,
   updateAdminMetadata,
-  sendResponseToAndi,
-  sendResponseToRecipient
+  sendResponseTo
 };

@@ -171,6 +171,58 @@ describe("utils", () => {
     });
   });
   describe("sendMessageTo", () => {
-    // pass
+    let ws = {
+      postToConnection: jest.fn(obj => {
+        return {
+          promise: jest.fn()
+        };
+      })
+    };
+    let brokenWs = {
+      postToConnection: jest.fn(async obj => {
+        return {
+          promise: jest.fn(() => {
+            throw new Error();
+          })
+        };
+      })
+    };
+    it("sends a message to andi correctly", async () => {
+      let andiConnectionString = (await utils.andiItem()).connection.S;
+      let result = await utils.sendResponseTo("andi", "test message", ws, "bababooey");
+      expect(ws.postToConnection).toHaveBeenCalledWith(
+        expect.objectContaining({
+          ConnectionId: andiConnectionString,
+          Data: JSON.stringify({
+            type: "reply",
+            msg: "test message",
+            uuid: "bababooey"
+          })
+        })
+      );
+      expect(result).toBeTruthy();
+    });
+    it("sends a message from andi correctly", async () => {
+      let result = await utils.sendResponseTo("testConnection", "test message", ws);
+      expect(ws.postToConnection).toHaveBeenCalledWith(
+        expect.objectContaining({
+          ConnectionId: "testConnection",
+          Data: JSON.stringify({
+            type: "reply",
+            msg: "test message"
+          })
+        })
+      );
+      expect(result).toBeTruthy();
+    });
+    it("fails gracefully and doesn't error", async () => {
+      let r1, r2;
+      expect(async () => {
+        r1 = await utils.sendResponseTo("andi", "test message", brokenWs, "bababooey");
+        r2 = await utils.sendResponseTo("testConnection", "test message", brokenWs);
+      }).not.toThrow();
+      expect(r1).toBeFalsy();
+      expect(r2).toBeFalsy();
+    });
   });
 });
