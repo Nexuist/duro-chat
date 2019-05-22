@@ -118,7 +118,7 @@ describe("userHandler", () => {
         }
       ]);
       expect(results).toEqual([invalidReply, utils.JSONReply("sent")]);
-      expect(utils.markUUID).toBeCalledWith("baba", true);
+      expect(utils.markUUID).toBeCalledWith("baba", false);
     });
     it("adds uuid to unread list, adds message to conversation, attempts to send response to andi", async () => {
       let result = await call({
@@ -128,7 +128,7 @@ describe("userHandler", () => {
       });
       expect(result).toEqual(utils.JSONReply("sent"));
       expect(utils.addMessageToConversation).toHaveBeenCalledWith("baba", "andi", "yeehaw", "testConnection", "127.0.0.1");
-      expect(utils.markUUID).toHaveBeenCalledWith("baba", true);
+      expect(utils.markUUID).toHaveBeenCalledWith("baba", false);
       expect(utils.sendResponseTo).toHaveBeenCalledWith("andi", "yeehaw", expect.anything(), "baba");
     });
   });

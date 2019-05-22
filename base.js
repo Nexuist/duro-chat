@@ -22,28 +22,29 @@ let userHandler = async (event, body) => {
     case "send":
       if (!body.msg) return JSONError();
       await utils.addMessageToConversation(body.uuid, "andi", body.msg, connectionID, ip);
-      await utils.markUUID(body.uuid, true);
+      await utils.markUUID(body.uuid, false);
       let sent = await utils.sendResponseTo("andi", body.msg, ws, body.uuid);
       return sent ? JSONReply("sent") : JSONReply("sendError");
   }
 };
 
 let adminHandler = async (event, body) => {
+  let connectionID = event.requestContext.connectionId;
   switch (body.action) {
     case "hello":
-      await utils.updateLastConnectedTime();
+      await utils.updateAdminMetadata(connectionID);
       return JSONReply("andiItem", await utils.andiItem());
     case "ping":
-      await utils.updateLastConnectedTime();
+      await utils.updateAdminMetadata(connectionID);
       return JSONReply("pong");
     case "list":
       if (!body.for) return JSONError();
-      await utils.markRead(body.for);
+      await utils.markUUID(body.for, true);
       return JSONReply("history", await utils.getAllMessagesWith(body.for));
     case "send":
-      if (!body.msg || !body.for) return JSONError();
-      await utils.addMessageToConversation(event, body);
-      let sent = await utils.sendResponseToRecipient(event, body, ws);
+      if (!body.msg || !body.uuidTo || !body.connectionTo) return JSONError();
+      await utils.addMessageToConversation("andi", body.uuidTo, body.msg);
+      let sent = await utils.sendResponseTo(body.connectionTo, body.msg, ws, body.uuidTo);
       return sent ? JSONReply("sent") : JSONReply("sendError");
   }
 };

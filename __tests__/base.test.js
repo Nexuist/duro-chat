@@ -42,7 +42,6 @@ describe("base", () => {
     expect(results).toEqual([invalidReply, invalidReply, utils.JSONReply("lastConnected", 0)]);
   });
   it("requires a password for uuid 'andi'", async () => {
-    utils.updateLastConnectedTime = jest.fn();
     let results = await calls([
       {
         uuid: "andi",
@@ -60,6 +59,5 @@ describe("base", () => {
       }
     ]);
     expect(results).toEqual([invalidReply, invalidReply, utils.JSONReply("andiItem", andiItem)]);
-    expect(utils.updateLastConnectedTime).toHaveBeenCalledTimes(1);
   });
 });
