@@ -1,6 +1,16 @@
+const AWS = require("aws-sdk");
 const utils = require("../utils");
 
 const { call, calls, invalidReply } = lambda;
+
+// prevent any requests from hitting prod
+beforeAll(() => {
+  utils.DDB = new AWS.DynamoDB({
+    apiVersion: "2012-10-08",
+    region: "us-east-1",
+    endpoint: "http://localhost:4569"
+  });
+});
 
 describe("userHandler", () => {
   beforeAll(() => {
@@ -49,7 +59,7 @@ describe("userHandler", () => {
     it("creates a conversation for the new uuid", async () => {
       let result = await call(validPayload);
       expect(result).toEqual(utils.JSONReply("welcome"));
-      expect(utils.createConversation).toBeCalledWith("bababooey", "andi", "andi@duro.me");
+      expect(utils.createConversation).toBeCalledWith("bababooey", "andi", "andi@duro.me", "testConnection", "127.0.0.1");
     });
   });
   describe("list", () => {
@@ -90,9 +100,12 @@ describe("userHandler", () => {
     });
   });
   describe("send", () => {
-    it("requires a message payload", async () => {
+    beforeAll(() => {
       utils.addMessageToConversation = jest.fn();
-      utils.sendResponseToAndi = jest.fn(() => true);
+      utils.markUUID = jest.fn();
+      utils.sendResponseTo = jest.fn(() => true);
+    });
+    it("requires a message payload", async () => {
       let results = await calls([
         {
           uuid: "baba",
@@ -105,18 +118,18 @@ describe("userHandler", () => {
         }
       ]);
       expect(results).toEqual([invalidReply, utils.JSONReply("sent")]);
+      expect(utils.markUUID).toBeCalledWith("baba", true);
     });
     it("adds uuid to unread list, adds message to conversation, attempts to send response to andi", async () => {
-      utils.addMessageToConversation = jest.fn();
-      utils.sendResponseToAndi = jest.fn(() => true);
       let result = await call({
         uuid: "baba",
         action: "send",
         msg: "yeehaw"
       });
       expect(result).toEqual(utils.JSONReply("sent"));
-      expect(utils.addMessageToConversation).toHaveBeenCalledTimes(1);
-      expect(utils.sendResponseToAndi).toHaveBeenCalledTimes(1);
+      expect(utils.addMessageToConversation).toHaveBeenCalledWith("baba", "andi", "yeehaw", "testConnection", "127.0.0.1");
+      expect(utils.markUUID).toHaveBeenCalledWith("baba", true);
+      expect(utils.sendResponseTo).toHaveBeenCalledWith("andi", "yeehaw", expect.anything(), "baba");
     });
   });
 });

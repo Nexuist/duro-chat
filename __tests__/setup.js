@@ -5,7 +5,11 @@ let call = async json =>
   await handler({
     requestContext: {
       domainName: "58yojgvxyi.execute-api.us-east-1.amazonaws.com",
-      stage: "dev"
+      stage: "dev",
+      connectionId: "testConnection",
+      identity: {
+        sourceIp: "127.0.0.1"
+      }
     },
     body: JSON.stringify(json)
   });

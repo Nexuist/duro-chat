@@ -7,21 +7,23 @@ let ws = null;
 let { JSONReply, JSONError } = utils;
 
 let userHandler = async (event, body) => {
+  let connectionID = event.requestContext.connectionId;
+  let ip = event.requestContext.identity.sourceIp;
   switch (body.action) {
     case "hello":
       let lastConnected = (await utils.andiItem()).lastConnected.N;
       return JSONReply("lastConnected", lastConnected);
     case "register":
       if (!body.nickname || !body.email) return JSONError();
-      utils.createConversation(body.uuid, body.nickname, body.email);
+      utils.createConversation(body.uuid, body.nickname, body.email, connectionID, ip);
       return JSONReply("welcome");
     case "list":
       return JSONReply("history", await utils.getAllMessagesWith(body.uuid));
     case "send":
-      // TODO: refactor utils to use params instead of event/body
       if (!body.msg) return JSONError();
-      await utils.addMessageToConversation(event, body);
-      let sent = await utils.sendResponseToAndi(event, body, ws);
+      await utils.addMessageToConversation(body.uuid, "andi", body.msg, connectionID, ip);
+      await utils.markUUID(body.uuid, true);
+      let sent = await utils.sendResponseTo("andi", body.msg, ws, body.uuid);
       return sent ? JSONReply("sent") : JSONReply("sendError");
   }
 };

@@ -1,3 +1,4 @@
+const AWS = require("aws-sdk");
 const utils = require("../utils");
 
 const { call, calls, invalidReply } = lambda;
@@ -7,6 +8,16 @@ const andiItem = {
     N: 0
   }
 };
+
+// prevent any requests from hitting prod
+beforeAll(() => {
+  utils.DDB = new AWS.DynamoDB({
+    apiVersion: "2012-10-08",
+    region: "us-east-1",
+    endpoint: "http://localhost:4569"
+  });
+});
+
 describe("base", () => {
   beforeAll(() => {
     utils.andiItem = jest.fn(async () => andiItem);
