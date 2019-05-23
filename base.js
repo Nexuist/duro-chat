@@ -22,7 +22,7 @@ let userHandler = async (event, body) => {
     case "send":
       if (!body.msg) return JSONError();
       await utils.addMessageToConversation(body.uuid, "andi", body.msg, connectionID, ip);
-      await utils.markUUID(body.uuid, false);
+      await utils.markUUID(body.uuid, true);
       let sent = await utils.sendResponseTo("andi", body.msg, ws, body.uuid);
       return sent ? JSONReply("sent") : JSONReply("sendError");
   }
@@ -39,7 +39,7 @@ let adminHandler = async (event, body) => {
       return JSONReply("pong");
     case "list":
       if (!body.for) return JSONError();
-      await utils.markUUID(body.for, true);
+      await utils.markUUID(body.for, false);
       return JSONReply("history", await utils.getAllMessagesWith(body.for));
     case "send":
       if (!body.msg || !body.uuidTo || !body.connectionTo) return JSONError();
