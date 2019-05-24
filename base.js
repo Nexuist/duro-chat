@@ -6,45 +6,69 @@ const PASSWORD = process.env.PASSWORD;
 let ws = null;
 let { JSONReply, JSONError } = utils;
 
-let userHandler = async (event, body) => {
-  let connectionID = event.requestContext.connectionId;
-  let ip = event.requestContext.identity.sourceIp;
+let userHandler = async ({ event, body, uuid, connection, ip }) => {
   switch (body.action) {
     case "hello":
       let lastConnected = (await utils.andiItem()).lastConnected.N;
       return JSONReply("lastConnected", lastConnected);
     case "register":
       if (!body.nickname || !body.email) return JSONError();
-      utils.createConversation(body.uuid, body.nickname, body.email, connectionID, ip);
+      await utils.createConversation({
+        uuid,
+        nickname: body.nickname,
+        email: body.email,
+        connection,
+        ip
+      });
       return JSONReply("welcome");
+    case "ping":
+      await utils.updateConversation({ uuid, connection, ip });
+      return JSONReply("pong");
     case "list":
-      return JSONReply("history", await utils.getAllMessagesWith(body.uuid));
+      return JSONReply("history", await utils.getAllMessagesWith(uuid));
     case "send":
       if (!body.msg) return JSONError();
-      await utils.addMessageToConversation(body.uuid, "andi", body.msg, connectionID, ip);
-      await utils.markUUID(body.uuid, true);
-      let sent = await utils.sendResponseTo("andi", body.msg, ws, body.uuid);
+      await utils.addMessageToConversation({
+        from: uuid,
+        to: "andi",
+        msg: body.msg
+      });
+      await utils.markUUIDUnread(body.uuid, true);
+      let sent = await utils.sendResponse({
+        from: uuid,
+        to: "andi",
+        msg: body.msg,
+        ws
+      });
       return sent ? JSONReply("sent") : JSONReply("sendError");
   }
 };
 
-let adminHandler = async (event, body) => {
-  let connectionID = event.requestContext.connectionId;
+let adminHandler = async ({ event, body, uuid, connection, ip }) => {
   switch (body.action) {
     case "hello":
-      await utils.updateAdminMetadata(connectionID);
+      await utils.updateConversation({ uuid, connection, ip });
       return JSONReply("andiItem", await utils.andiItem());
     case "ping":
-      await utils.updateAdminMetadata(connectionID);
+      await utils.updateConversation({ uuid, connection, ip });
       return JSONReply("pong");
     case "list":
       if (!body.for) return JSONError();
-      await utils.markUUID(body.for, false);
+      await utils.markUUIDUnread(body.for, false);
       return JSONReply("history", await utils.getAllMessagesWith(body.for));
     case "send":
-      if (!body.msg || !body.uuidTo || !body.connectionTo) return JSONError();
-      await utils.addMessageToConversation("andi", body.uuidTo, body.msg);
-      let sent = await utils.sendResponseTo(body.connectionTo, body.msg, ws, body.uuidTo);
+      if (!body.msg || !body.uuidTo) return JSONError();
+      await utils.addMessageToConversation({
+        from: "andi",
+        to: body.uuidTo,
+        msg: body.msg
+      });
+      let sent = await utils.sendResponse({
+        from: "andi",
+        to: body.uuidTo,
+        msg: body.msg,
+        ws
+      });
       return sent ? JSONReply("sent") : JSONReply("sendError");
   }
 };
@@ -60,11 +84,18 @@ exports.handler = async event => {
   try {
     body = JSON.parse(event.body);
     if (!body.action || !body.uuid) throw new Error("missing required keys");
+    let args = {
+      event,
+      body,
+      uuid: body.uuid,
+      connection: event.requestContext.connectionId,
+      ip: event.requestContext.identity.sourceIp
+    };
     if (body.uuid == "andi") {
       if (!(body.auth == PASSWORD)) throw new Error("incorrect auth");
-      return adminHandler(event, body);
+      return adminHandler(args);
     } else {
-      return userHandler(event, body);
+      return userHandler(args);
     }
   } catch (err) {
     return JSONError();

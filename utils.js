@@ -30,15 +30,16 @@ let andiItem = async () => {
   })).Item;
 };
 
-let createConversation = async (uuid, nickname, email, connectionID, ipAddress) => {
+let createConversation = async ({ uuid, nickname, email, connection, ip }) => {
   await dynamo("putItem", {
     Item: {
       uuid: { S: uuid },
       timestamp: { N: "0" },
       nickname: { S: nickname },
       email: { S: email },
-      connection: { S: connectionID },
-      ip: { S: ipAddress }
+      connection: { S: connection },
+      lastConnected: { N: `${+new Date()}` },
+      ip: { S: ip }
     }
   });
   await dynamo("updateItem", {
@@ -49,7 +50,22 @@ let createConversation = async (uuid, nickname, email, connectionID, ipAddress) 
   });
 };
 
-let markUUID = async (uuid, unread) => {
+let updateConversation = async ({ uuid, connection, ip }) =>
+  await dynamo("updateItem", {
+    Key: {
+      uuid: { S: uuid },
+      timestamp: { N: "0" }
+    },
+    UpdateExpression: "SET #conn = :conn, lastConnected = :timestamp, #ip = :ip",
+    ExpressionAttributeNames: { "#conn": "connection", "#ip": "ip" },
+    ExpressionAttributeValues: {
+      ":conn": { S: connection },
+      ":timestamp": { N: `${+new Date()}` },
+      ":ip": { S: ip }
+    }
+  });
+
+let markUUIDUnread = async (uuid, unread) => {
   // remove from unread list by default
   let updateExpression = "DELETE unread :uuid";
   // add to unread list
@@ -63,34 +79,19 @@ let markUUID = async (uuid, unread) => {
   });
 };
 
-let updateAdminMetadata = async connectionID =>
-  await dynamo("updateItem", {
-    Key: andiKey,
-    UpdateExpression: "SET #conn = :conn, lastConnected = :timestamp",
-    ExpressionAttributeNames: { "#conn": "connection" },
-    ExpressionAttributeValues: {
-      ":conn": { S: connectionID },
-      ":timestamp": { N: `${+new Date()}` }
-    }
-  });
-
-let addMessageToConversation = async (uuidFrom, uuidTo, msg, connectionID, ipAddress) => {
+let addMessageToConversation = async ({ from, to, msg }) => {
   // assume message is from user to andi
   let time = +new Date();
   let obj = {
-    uuid: { S: uuidFrom },
+    uuid: { S: from },
     timestamp: { N: `${time}` },
     msg: { S: msg },
-    type: { S: "to" },
-    connection: { S: connectionID },
-    ip: { S: ipAddress }
+    type: { S: "to" }
   };
   if (uuidFrom == "andi") {
     // message is from andi
-    obj.uuid.S = uuidTo;
+    obj.uuid.S = to;
     obj.type.S = "from";
-    obj.connection.S = "andi";
-    obj.ip.S = "andi";
   }
   await dynamo("putItem", { Item: obj });
   return time;
@@ -116,26 +117,28 @@ let getAllMessagesWith = async uuid => {
   }));
 };
 
-let sendResponseTo = async (connectionID, msg, ws, optionalUUID) => {
-  // assume message is from andi
+let sendResponse = async ({ from, to, msg, ws }) => {
   let obj = {
     type: "reply",
     msg
   };
-  if (connectionID == "andi") {
-    obj.uuid = optionalUUID;
-    connectionID = (await andiItem()).connection.S;
-  }
+  let connectionString = (await dynamo("getItem", {
+    Key: {
+      uuid: { S: to },
+      timestamp: { N: "0" }
+    }
+  })).Item.connection.S;
+  if (to == "andi") obj.uuid = from;
   try {
     await ws
       .postToConnection({
-        ConnectionId: connectionID,
+        connectionString: connectionString,
         Data: JSON.stringify(obj)
       })
       .promise();
     return true;
   } catch (err) {
-    if (connectionID == "andi") {
+    if (to == "andi") {
       // notify17?
     }
     console.log(err);
@@ -152,7 +155,7 @@ module.exports = {
   createConversation,
   addMessageToConversation,
   getAllMessagesWith,
-  markUUID,
+  markUUIDUnread,
   updateAdminMetadata,
   sendResponseTo
 };
