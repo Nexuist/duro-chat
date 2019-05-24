@@ -13,9 +13,6 @@ beforeAll(() => {
 });
 
 describe("userHandler", () => {
-  beforeAll(() => {
-    utils.dynamo = jest.fn(); // prevent any real database use
-  });
   describe("hello", () => {
     it("replies with the last connected time", async () => {
       utils.andiItem = jest.fn(async () => {
@@ -31,6 +28,20 @@ describe("userHandler", () => {
       });
       expect(result).toEqual(utils.JSONReply("lastConnected", 0));
     });
+  });
+  test("ping", async () => {
+    utils.updateConversation = jest.fn();
+    await call({
+      uuid: "bababooey",
+      action: "ping"
+    });
+    expect(utils.updateConversation).toHaveBeenCalledWith(
+      expect.objectContaining({
+        uuid: "bababooey",
+        connection: "testConnection",
+        ip: "127.0.0.1"
+      })
+    );
   });
   describe("register", () => {
     utils.createConversation = jest.fn();
@@ -59,7 +70,15 @@ describe("userHandler", () => {
     it("creates a conversation for the new uuid", async () => {
       let result = await call(validPayload);
       expect(result).toEqual(utils.JSONReply("welcome"));
-      expect(utils.createConversation).toBeCalledWith("bababooey", "andi", "andi@duro.me", "testConnection", "127.0.0.1");
+      expect(utils.createConversation).toBeCalledWith(
+        expect.objectContaining({
+          uuid: "bababooey",
+          nickname: "andi",
+          email: "andi@duro.me",
+          connection: "testConnection",
+          ip: "127.0.0.1"
+        })
+      );
     });
   });
   describe("list", () => {
@@ -102,8 +121,8 @@ describe("userHandler", () => {
   describe("send", () => {
     beforeAll(() => {
       utils.addMessageToConversation = jest.fn();
-      utils.markUUID = jest.fn();
-      utils.sendResponseTo = jest.fn(() => true);
+      utils.markUUIDUnread = jest.fn();
+      utils.sendResponse = jest.fn(() => true);
     });
     it("requires a message payload", async () => {
       let results = await calls([
@@ -118,7 +137,7 @@ describe("userHandler", () => {
         }
       ]);
       expect(results).toEqual([invalidReply, utils.JSONReply("sent")]);
-      expect(utils.markUUID).toBeCalledWith("baba", false);
+      expect(utils.markUUIDUnread).toBeCalledWith("baba", true);
     });
     it("adds uuid to unread list, adds message to conversation, attempts to send response to andi", async () => {
       let result = await call({
@@ -127,9 +146,17 @@ describe("userHandler", () => {
         msg: "yeehaw"
       });
       expect(result).toEqual(utils.JSONReply("sent"));
-      expect(utils.addMessageToConversation).toHaveBeenCalledWith("baba", "andi", "yeehaw", "testConnection", "127.0.0.1");
-      expect(utils.markUUID).toHaveBeenCalledWith("baba", false);
-      expect(utils.sendResponseTo).toHaveBeenCalledWith("andi", "yeehaw", expect.anything(), "baba");
+      expect(utils.addMessageToConversation).toHaveBeenCalledWith(
+        expect.objectContaining({
+          from: "baba",
+          to: "andi",
+          msg: "yeehaw"
+        })
+      );
+      expect(utils.markUUIDUnread).toHaveBeenCalledWith("baba", true);
+      expect(utils.sendResponse).toHaveBeenCalledWith(
+        expect.objectContaining({ from: "baba", to: "andi", msg: "yeehaw", ws: expect.anything() })
+      );
     });
   });
 });
