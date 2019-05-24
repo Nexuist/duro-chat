@@ -1,5 +1,4 @@
 const AWS = require("aws-sdk");
-require("aws-sdk/clients/apigatewaymanagementapi");
 const utils = require("./utils");
 const PASSWORD = process.env.PASSWORD;
 
