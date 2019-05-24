@@ -1,4 +1,5 @@
 const AWS = require("aws-sdk");
+const base = require("../base");
 const utils = require("../utils");
 
 const { call, calls, invalidReply } = lambda;
@@ -40,6 +41,23 @@ describe("base", () => {
       }
     ]);
     expect(results).toEqual([invalidReply, invalidReply, utils.JSONReply("lastConnected", 0)]);
+  });
+  it("calls userHandler with the correct arguments", async () => {
+    base.userHandler = jest.fn();
+    let result = await call({
+      uuid: "bababoeey",
+      action: "hello"
+    });
+    // connection and ip are defined in setup.js
+    expect(base.userHandler).toHaveBeenCalledWith(
+      expect.objectContaining({
+        event: expect.anything(),
+        body: expect.anything(),
+        uuid: "bababoeey",
+        connection: "testConnection",
+        ip: "127.0.0.1"
+      })
+    );
   });
   it("requires a password for uuid 'andi'", async () => {
     let results = await calls([

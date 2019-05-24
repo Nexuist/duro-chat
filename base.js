@@ -73,7 +73,7 @@ let adminHandler = async ({ event, body, uuid, connection, ip }) => {
   }
 };
 
-exports.handler = async event => {
+let handler = async event => {
   if (!ws) {
     ws = new AWS.ApiGatewayManagementApi({
       apiVersion: "2018-11-29",
@@ -93,11 +93,18 @@ exports.handler = async event => {
     };
     if (body.uuid == "andi") {
       if (!(body.auth == PASSWORD)) throw new Error("incorrect auth");
-      return adminHandler(args);
+      return module.exports.adminHandler(args);
     } else {
-      return userHandler(args);
+      return module.exports.userHandler(args);
     }
   } catch (err) {
     return JSONError();
   }
+};
+
+// export all 3 so they can be mocked in unit tests
+module.exports = {
+  handler,
+  userHandler,
+  adminHandler
 };
