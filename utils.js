@@ -88,7 +88,7 @@ let addMessageToConversation = async ({ from, to, msg }) => {
     msg: { S: msg },
     type: { S: "to" }
   };
-  if (uuidFrom == "andi") {
+  if (from == "andi") {
     // message is from andi
     obj.uuid.S = to;
     obj.type.S = "from";
@@ -112,8 +112,7 @@ let getAllMessagesWith = async uuid => {
   return query.Items.map(item => ({
     msg: item.msg.S,
     type: item.type.S,
-    timestamp: item.timestamp.N,
-    connection: item.connection.S
+    timestamp: item.timestamp.N
   }));
 };
 
@@ -132,7 +131,7 @@ let sendResponse = async ({ from, to, msg, ws }) => {
   try {
     await ws
       .postToConnection({
-        connectionString: connectionString,
+        ConnectionId: connectionString,
         Data: JSON.stringify(obj)
       })
       .promise();
@@ -141,7 +140,8 @@ let sendResponse = async ({ from, to, msg, ws }) => {
     if (to == "andi") {
       // notify17?
     }
-    console.log(err);
+    console.log(from, to, msg);
+    console.error(err);
     return false;
   }
 };
@@ -153,9 +153,9 @@ module.exports = {
   dynamo,
   andiItem,
   createConversation,
+  updateConversation,
   addMessageToConversation,
   getAllMessagesWith,
   markUUIDUnread,
-  updateAdminMetadata,
-  sendResponseTo
+  sendResponse
 };
