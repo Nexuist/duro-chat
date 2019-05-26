@@ -3,20 +3,15 @@ const base = require("../base");
 const utils = require("../utils");
 
 const { call, calls, invalidReply } = lambda;
+const { DDC } = database;
 
 const andiItem = {
-  lastConnected: {
-    N: 0
-  }
+  lastConnected: 0
 };
 
 // prevent any requests from hitting prod
 beforeAll(() => {
-  utils.DDB = new AWS.DynamoDB({
-    apiVersion: "2012-10-08",
-    region: "us-east-1",
-    endpoint: "http://localhost:4569"
-  });
+  utils.DynamoDocumentClient = DDC;
 });
 
 describe("base", () => {

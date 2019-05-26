@@ -1,13 +1,7 @@
 const AWS = require("aws-sdk");
 const utils = require("../utils");
 
-const DynamoParams = {
-  apiVersion: "2012-10-08",
-  region: "us-east-1",
-  endpoint: "http://localhost:4569"
-};
-const DDB = new AWS.DynamoDB(DynamoParams);
-const DDC = new AWS.DynamoDB.DocumentClient(DynamoParams);
+const { DDB, DDC } = database;
 
 const andiItem = {
   uuid: "andi",

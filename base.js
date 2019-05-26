@@ -8,7 +8,7 @@ let { JSONReply, JSONError } = utils;
 let userHandler = async ({ event, body, uuid, connection, ip }) => {
   switch (body.action) {
     case "hello":
-      let lastConnected = (await utils.andiItem()).lastConnected.N;
+      let lastConnected = (await utils.andiItem()).lastConnected;
       return JSONReply("lastConnected", lastConnected);
     case "register":
       if (!body.nickname || !body.email) return JSONError();
