@@ -5,6 +5,8 @@ const PASSWORD = process.env.PASSWORD;
 let ws = null;
 let { JSONReply, JSONError } = utils;
 
+// Technically someone can break the function by trying to send a message with a non-registered uuid, but it won't really affect uptime
+
 let userHandler = async ({ event, body, uuid, connection, ip }) => {
   switch (body.action) {
     case "hello":

@@ -75,6 +75,31 @@ let markUUIDUnread = async (uuid, unread) => {
   });
 };
 
+// Lambda sometimes retries the same event if it didn't work the first time, so this is here to prevent duplicate messages from being sent
+let isUniqueRequest = async (uuid, requestID) => {
+  let Key = {
+    uuid,
+    timestamp: 0
+  };
+  let lastRequestsServed = await dynamo("get", {
+    Key,
+    ProjectionExpression: "lastRequestsServed"
+  });
+  if (!lastRequestsServed.Item) return true; // unknown uuid
+  lastRequestsServed = lastRequestsServed.Item.lastRequestsServed.values;
+  if (lastRequestsServed.includes(requestID)) return false;
+  lastRequestsServed.push(requestID); // add new request
+  if (lastRequestsServed.length >= 6) lastRequestsServed.shift(); // drop the oldest saved id if there are too many
+  await dynamo("update", {
+    Key,
+    UpdateExpression: "SET lastRequestsServed = :newSet",
+    ExpressionAttributeValues: {
+      ":newSet": module.exports.DynamoDocumentClient.createSet(lastRequestsServed)
+    }
+  });
+  return true;
+};
+
 let addMessageToConversation = async ({ from, to, msg }) => {
   // assume message is from user to andi
   let timestamp = +new Date();
@@ -153,5 +178,6 @@ module.exports = {
   addMessageToConversation,
   getAllMessagesWith,
   markUUIDUnread,
+  isUniqueRequest,
   sendResponse
 };

@@ -12,6 +12,16 @@ const andiItem = {
   connection: "null"
 };
 
+const createFakeConversation = async uuid => {
+  await utils.createConversation({
+    uuid,
+    nickname: "baba",
+    email: "booey@email.com",
+    connection: "connString",
+    ip: "127.0.0.1"
+  });
+};
+
 beforeAll(async () => {
   utils.DynamoDocumentClient = DDC;
   const dynamo = async (action, params) => {
@@ -60,13 +70,7 @@ describe("utils", () => {
   });
   test("createConversation creates a new conversation", async () => {
     const testUUID = "bababooey-createConversation";
-    await utils.createConversation({
-      uuid: testUUID,
-      nickname: "baba",
-      email: "booey@email.com",
-      connection: "connString",
-      ip: "127.0.0.1"
-    });
+    await createFakeConversation(testUUID);
     let result = (await utils.dynamo("get", {
       Key: {
         uuid: testUUID,
@@ -122,17 +126,43 @@ describe("utils", () => {
       expect(await utils.andiItem()).toEqual(andiItem);
     });
   });
+  describe("isUniqueRequest", () => {
+    it("doesn't crash if an invalid UUID is given", async () => {
+      expect(utils.isUniqueRequest("bababoeey-impossible", "testRequest")).toBeTruthy();
+    });
+    it("identifies a unique request ID correctly", async () => {
+      let testUUID = "bababooey-isUniqueRequest-unique";
+      await createFakeConversation(testUUID);
+      expect(await utils.isUniqueRequest(testUUID, "requestOne")).toBeTruthy();
+      expect;
+    });
+    it("identifies a duplicate request ID correctly", async () => {
+      let testUUID = "bababooey-isUniqueRequest-duplicate";
+      await createFakeConversation(testUUID);
+      await utils.isUniqueRequest(testUUID, "requestOne");
+      expect(await utils.isUniqueRequest(testUUID, "requestOne")).toBeFalsy();
+    });
+    it("only allows 5 request IDs to be saved at a time", async () => {
+      let testUUID = "bababooey-isUniqueRequest-five";
+      await createFakeConversation(testUUID);
+      for (let i = 0; i <= 10; i++) {
+        await utils.isUniqueRequest(testUUID, `request-${i}`);
+      }
+      let n = (await utils.dynamo("get", {
+        Key: {
+          uuid: testUUID,
+          timestamp: 0
+        },
+        ProjectionExpression: "lastRequestsServed"
+      })).Item.lastRequestsServed.values.length;
+      expect(n).toEqual(5);
+    });
+  });
   describe("addMessageToConversation", () => {
     it("adds a to type message if uuidFrom is not andi", async () => {
       // build a fake conversation
       const testUUID = "bababooey-addMessageToConversation-to";
-      await utils.createConversation({
-        uuid: testUUID,
-        nickname: "baba",
-        email: "booey@email.com",
-        connection: "connString",
-        ip: "127.0.0.1"
-      });
+      await createFakeConversation(testUUID);
       let timestamp = await utils.addMessageToConversation({ from: testUUID, to: "andi", msg: "testing message" });
       let result = await utils.dynamo("get", {
         Key: {
@@ -152,13 +182,7 @@ describe("utils", () => {
     it("adds a from type message if uuidFrom is andi", async () => {
       // build a fake conversation
       const testUUID = "bababooey-addMessageToConversation-from";
-      await utils.createConversation({
-        uuid: testUUID,
-        nickname: "baba",
-        email: "booey@email.com",
-        connection: "connString",
-        ip: "127.0.0.1"
-      });
+      await createFakeConversation(testUUID);
       await utils.addMessageToConversation({ from: testUUID, to: "andi", msg: "testing message" });
       let timestamp = await utils.addMessageToConversation({ from: "andi", to: testUUID, msg: "hello" });
       let result = await utils.dynamo("get", {
@@ -181,13 +205,7 @@ describe("utils", () => {
     it("returns the correct form of messages if the uuid exists", async () => {
       // build a fake conversation
       const testUUID = "bababooey-getAllMessagesWith";
-      await utils.createConversation({
-        uuid: testUUID,
-        nickname: "baba",
-        email: "booey@email.com",
-        connection: "connString",
-        ip: "127.0.0.1"
-      });
+      await createFakeConversation(testUUID);
       await utils.addMessageToConversation({ from: testUUID, to: "andi", msg: "testing message" });
       await utils.addMessageToConversation({ from: "andi", to: testUUID, msg: "hello" });
       let messages = await utils.getAllMessagesWith(testUUID);
