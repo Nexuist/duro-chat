@@ -13,6 +13,7 @@
     ]
   },
   "devDependencies": {
+    "@babel/preset-env": "^7.4.5",
     "jest": "^23.0.0",
     "jest-cli": "^24.7.1",
     "serverless-localstack": "^0.4.12"
@@ -21,5 +22,17 @@
     "aws-sdk": "^2.437.0",
     "dotenv": "^8.0.0",
     "ws": "^7.0.0"
+  },
+  "babel": {
+    "presets": [
+      [
+        "@babel/env",
+        {
+          "targets": {
+            "node": "current"
+          }
+        }
+      ]
+    ]
   }
 }

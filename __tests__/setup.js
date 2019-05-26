@@ -18,7 +18,7 @@ let call = async json =>
 
 let calls = async inputs => {
   let results = [];
-  for (input of inputs) {
+  for (let input of inputs) {
     results.push(await call(input));
   }
   return results;
