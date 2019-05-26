@@ -1,4 +1,5 @@
 const utils = require("../utils");
+const { JSONReply } = utils;
 
 const { call, calls, invalidReply } = lambda;
 const { DDC } = database;
@@ -25,7 +26,7 @@ describe("adminHandler", () => {
         ...payload,
         action: "hello"
       });
-      expect(result).toEqual(utils.JSONReply("andiItem", andiItem));
+      expect(result).toEqual(JSONReply("andiItem", andiItem));
     });
     it("updates the andi conversation", async () => {
       let result = await call({
@@ -93,7 +94,7 @@ describe("adminHandler", () => {
         },
         validPayload
       ]);
-      expect(results).toEqual([utils.JSONError(), utils.JSONReply("history", fakeMessages)]);
+      expect(results).toEqual([utils.JSONError(), JSONReply("history", fakeMessages)]);
       expect(utils.markUUIDUnread).toHaveBeenCalledWith("bababooey", false);
     });
     it("returns an empty list for an unknown uuid", async () => {
@@ -102,18 +103,21 @@ describe("adminHandler", () => {
         action: "list",
         for: "baba"
       });
-      expect(result).toEqual(utils.JSONReply("history", []));
+      expect(result).toEqual(JSONReply("history", []));
     });
   });
   describe("send", () => {
-    utils.addMessageToConversation = jest.fn();
-    utils.sendResponse = jest.fn(() => true);
-    let validPayload = {
+    const validPayload = {
       ...payload,
       action: "send",
       uuidTo: "bababooey",
       msg: "hello"
     };
+    beforeEach(() => {
+      utils.addMessageToConversation = jest.fn();
+      utils.sendResponse = jest.fn(() => true);
+      utils.isUniqueRequest = jest.fn(() => true);
+    });
     it("requires a uuidTo and msg argument", async () => {
       let results = await calls([
         {
@@ -127,7 +131,14 @@ describe("adminHandler", () => {
         },
         validPayload
       ]);
-      expect(results).toEqual([invalidReply, invalidReply, utils.JSONReply("sent")]);
+      expect(results).toEqual([invalidReply, invalidReply, JSONReply("sent")]);
+    });
+    it("returns if the request is a duplicate", async () => {
+      utils.isUniqueRequest = jest.fn(() => false);
+      let result = await call(validPayload);
+      expect(result).toEqual(JSONReply("duplicate"));
+      expect(utils.addMessageToConversation).not.toBeCalled();
+      expect(utils.sendResponse).not.toBeCalled();
     });
     it("adds the message to the conversation", async () => {
       let result = await call(validPayload);
@@ -148,7 +159,7 @@ describe("adminHandler", () => {
           msg: "hello"
         })
       );
-      expect(result).toEqual(utils.JSONReply("sent"));
+      expect(result).toEqual(JSONReply("sent"));
     });
   });
 });

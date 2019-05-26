@@ -7,7 +7,7 @@ let { JSONReply, JSONError } = utils;
 
 // Technically someone can break the function by trying to send a message with a non-registered uuid, but it won't really affect uptime
 
-let userHandler = async ({ event, body, uuid, connection, ip }) => {
+let userHandler = async ({ event, body, uuid, connection, ip, requestID }) => {
   switch (body.action) {
     case "hello":
       let lastConnected = (await utils.andiItem()).lastConnected;
@@ -29,6 +29,7 @@ let userHandler = async ({ event, body, uuid, connection, ip }) => {
       return JSONReply("history", await utils.getAllMessagesWith(uuid));
     case "send":
       if (!body.msg) return JSONError();
+      if (!utils.isUniqueRequest(uuid, requestID)) return JSONReply("duplicate");
       await utils.addMessageToConversation({
         from: uuid,
         to: "andi",
@@ -45,7 +46,7 @@ let userHandler = async ({ event, body, uuid, connection, ip }) => {
   }
 };
 
-let adminHandler = async ({ event, body, uuid, connection, ip }) => {
+let adminHandler = async ({ event, body, uuid, connection, ip, requestID }) => {
   switch (body.action) {
     case "hello":
       await utils.updateConversation({ uuid, connection, ip });
@@ -59,6 +60,7 @@ let adminHandler = async ({ event, body, uuid, connection, ip }) => {
       return JSONReply("history", await utils.getAllMessagesWith(body.for));
     case "send":
       if (!body.msg || !body.uuidTo) return JSONError();
+      if (!utils.isUniqueRequest(uuid, requestID)) return JSONReply("duplicate");
       await utils.addMessageToConversation({
         from: "andi",
         to: body.uuidTo,
@@ -90,7 +92,8 @@ let handler = async event => {
       body,
       uuid: body.uuid,
       connection: event.requestContext.connectionId,
-      ip: event.requestContext.identity.sourceIp
+      ip: event.requestContext.identity.sourceIp,
+      requestID: event.requestContext.requestId
     };
     if (body.uuid == "andi") {
       if (!(body.auth == PASSWORD)) throw new Error("incorrect auth");

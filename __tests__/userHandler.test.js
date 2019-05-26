@@ -1,4 +1,5 @@
 const utils = require("../utils");
+const { JSONReply } = utils;
 
 const { call, calls, invalidReply } = lambda;
 const { DDC } = database;
@@ -20,7 +21,7 @@ describe("userHandler", () => {
         uuid: "bababooey",
         action: "hello"
       });
-      expect(result).toEqual(utils.JSONReply("lastConnected", 0));
+      expect(result).toEqual(JSONReply("lastConnected", 0));
     });
   });
   test("ping", async () => {
@@ -59,11 +60,11 @@ describe("userHandler", () => {
         },
         validPayload
       ]);
-      expect(results).toEqual([invalidReply, invalidReply, utils.JSONReply("welcome")]);
+      expect(results).toEqual([invalidReply, invalidReply, JSONReply("welcome")]);
     });
     it("creates a conversation for the new uuid", async () => {
       let result = await call(validPayload);
-      expect(result).toEqual(utils.JSONReply("welcome"));
+      expect(result).toEqual(JSONReply("welcome"));
       expect(utils.createConversation).toBeCalledWith(
         expect.objectContaining({
           uuid: "bababooey",
@@ -102,20 +103,21 @@ describe("userHandler", () => {
         uuid: "bababooey",
         action: "list"
       });
-      expect(result).toEqual(utils.JSONReply("history", fakeMessages));
+      expect(result).toEqual(JSONReply("history", fakeMessages));
     });
     it("replies with an empty list for an unrecognized uuid", async () => {
       let result = await call({
         uuid: "bab",
         action: "list"
       });
-      expect(result).toEqual(utils.JSONReply("history", []));
+      expect(result).toEqual(JSONReply("history", []));
     });
   });
   describe("send", () => {
-    beforeAll(() => {
+    beforeEach(() => {
       utils.addMessageToConversation = jest.fn();
       utils.markUUIDUnread = jest.fn();
+      utils.isUniqueRequest = jest.fn(() => true);
       utils.sendResponse = jest.fn(() => true);
     });
     it("requires a message payload", async () => {
@@ -130,8 +132,19 @@ describe("userHandler", () => {
           msg: "yeehaw"
         }
       ]);
-      expect(results).toEqual([invalidReply, utils.JSONReply("sent")]);
+      expect(results).toEqual([invalidReply, JSONReply("sent")]);
       expect(utils.markUUIDUnread).toBeCalledWith("baba", true);
+    });
+    it("returns if the request is a duplicate", async () => {
+      utils.isUniqueRequest = jest.fn(() => false);
+      let result = await call({
+        uuid: "baba",
+        action: "send",
+        msg: "yeehaw"
+      });
+      expect(result).toEqual(JSONReply("duplicate"));
+      expect(utils.addMessageToConversation).not.toBeCalled();
+      expect(utils.sendResponse).not.toBeCalled();
     });
     it("adds uuid to unread list, adds message to conversation, attempts to send response to andi", async () => {
       let result = await call({
@@ -139,7 +152,7 @@ describe("userHandler", () => {
         action: "send",
         msg: "yeehaw"
       });
-      expect(result).toEqual(utils.JSONReply("sent"));
+      expect(result).toEqual(JSONReply("sent"));
       expect(utils.addMessageToConversation).toHaveBeenCalledWith(
         expect.objectContaining({
           from: "baba",

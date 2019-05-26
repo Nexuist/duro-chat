@@ -50,7 +50,8 @@ describe("base", () => {
         body: expect.anything(),
         uuid: "bababoeey",
         connection: "testConnection",
-        ip: "127.0.0.1"
+        ip: "127.0.0.1",
+        requestID: "testRequestID"
       })
     );
   });
