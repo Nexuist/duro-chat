@@ -20,31 +20,66 @@ let printCall = async json => {
   console.log(JSON.parse(result.body));
 };
 
+let verifyOriginalRequest = (uuid, requestID) => {};
+
 let header = msg => console.log(`--- ${msg.toUpperCase()} ---`);
 
 let main = async () => {
-  utils.DDB = new AWS.DynamoDB({
-    apiVersion: "2012-10-08",
-    region: "us-east-1",
-    endpoint: "http://localhost:4569"
-  });
-  header("user/hello");
-  await printCall({
-    uuid: "bababooey",
-    action: "hello"
-  });
-  header("user/register");
-  await printCall({
-    uuid: "bababooey-register",
-    action: "register",
-    nickname: "baba",
-    email: "baba@booey.com"
-  });
-  header("user/list");
-  await printCall({
-    uuid: "bababooey-getAllMessagesWith",
-    action: "list"
-  });
+  // let client = new AWS.DynamoDB.DocumentClient({
+  //   apiVersion: "2012-10-08",
+  //   region: "us-east-1",
+  //   endpoint: "http://localhost:4569"
+  // });
+  // try {
+  //   await client
+  //     .put({
+  //       TableName: "DuroLiveChat",
+  //       Item: {
+  //         uuid: "tamagotchi",
+  //         timestamp: 0,
+  //         toasts: 5,
+  //         lastRequestsServed: client.createSet(["null"])
+  //       }
+  //     })
+  //     .promise();
+  // } catch (ex) {
+  //   console.log(ex);
+  // }
+  // utils.DDB = new AWS.DynamoDB({
+  //   apiVersion: "2012-10-08",
+  //   region: "us-east-1",
+  //   endpoint: "http://localhost:4569"
+  // });
+  // header("user/hello");
+  // await printCall({
+  //   uuid: "bababooey",
+  //   action: "hello"
+  // });
+  // header("user/register");
+  // await printCall({
+  //   uuid: "bababooey-register",
+  //   action: "register",
+  //   nickname: "baba",
+  //   email: "baba@booey.com"
+  // });
+  // header("user/list");
+  // await printCall({
+  //   uuid: "bababooey-getAllMessagesWith",
+  //   action: "list"
+  // });
+  // var params = {
+  //   TableName: "DuroLiveChat",
+  //   Key: {
+  //     uuid: { S: "bababooey-createConversation" },
+  //     timestamp: { N: "0" }
+  //   },
+  //   UpdateExpression: "ADD lastRequestsServed :value",
+  //   ExpressionAttributeValues: {
+  //     ":value": { SS: ["test"] }
+  //   },
+  //   ReturnValues: "ALL_NEW" // optional (NONE | ALL_OLD | UPDATED_OLD | ALL_NEW | UPDATED_NEW)
+  // };
+  // await utils.dynamo("updateItem", params);
 };
 
 main();

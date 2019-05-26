@@ -4,6 +4,9 @@ const replServer = require("repl");
 const ENDPOINT = process.env.ENDPOINT;
 const AUTH = process.env.PASSWORD;
 
+// utils has to be idempotent...
+// replace timestamp with request ID
+
 const ws = new WebSocket(ENDPOINT);
 
 let conversations = [];
@@ -29,7 +32,10 @@ let eval = msg => {
     console.error("\nMessage too short!");
     shouldSend = false;
   }
-  if (shouldSend) send({ action: "send", msg, uuidTo: selectedConvo.uuid });
+  if (shouldSend) {
+    send({ action: "send", msg, uuidTo: selectedConvo.uuid });
+    console.log("SENT MESSAGE!");
+  }
   repl.displayPrompt();
 };
 

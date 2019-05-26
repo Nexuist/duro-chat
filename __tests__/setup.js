@@ -9,7 +9,8 @@ let call = async json =>
       connectionId: "testConnection",
       identity: {
         sourceIp: "127.0.0.1"
-      }
+      },
+      requestId: "testRequestID"
     },
     body: JSON.stringify(json)
   });

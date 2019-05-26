@@ -1,27 +1,37 @@
 const AWS = require("aws-sdk");
 const utils = require("../utils");
 
+const DynamoParams = {
+  apiVersion: "2012-10-08",
+  region: "us-east-1",
+  endpoint: "http://localhost:4569"
+};
+const DDB = new AWS.DynamoDB(DynamoParams);
+const DDC = new AWS.DynamoDB.DocumentClient(DynamoParams);
+
 const andiItem = {
-  uuid: { S: "andi" },
-  timestamp: { N: "0" },
-  lastConnected: { N: "0" },
-  conversations: { M: {} },
-  unread: { SS: ["null"] },
-  connection: { S: "null" }
+  uuid: "andi",
+  timestamp: 0,
+  lastConnected: 0,
+  conversations: {},
+  unread: DDC.createSet(["null"]),
+  connection: "null"
 };
 
-beforeAll(async done => {
-  utils.DDB = new AWS.DynamoDB({
-    apiVersion: "2012-10-08",
-    region: "us-east-1",
-    endpoint: "http://localhost:4569"
-  });
+beforeAll(async () => {
+  utils.DynamoDocumentClient = DDC;
+  const dynamo = async (action, params) => {
+    await DDB[action]({
+      TableName: "DuroLiveChat",
+      ...params
+    }).promise();
+  };
   try {
-    await utils.dynamo("deleteTable", {}); // Reset localstack
+    await dynamo("deleteTable", {}); // Reset localstack
   } catch (err) {
     // pass
   }
-  await utils.dynamo("createTable", {
+  await dynamo("createTable", {
     KeySchema: [
       {
         AttributeName: "uuid",
@@ -47,10 +57,7 @@ beforeAll(async done => {
       WriteCapacityUnits: 1
     }
   });
-  await utils.dynamo("putItem", {
-    Item: andiItem
-  });
-  return done();
+  await utils.dynamo("put", { Item: andiItem });
 });
 
 describe("utils", () => {
@@ -66,23 +73,24 @@ describe("utils", () => {
       connection: "connString",
       ip: "127.0.0.1"
     });
-    let result = (await utils.dynamo("getItem", {
+    let result = (await utils.dynamo("get", {
       Key: {
-        uuid: { S: testUUID },
-        timestamp: { N: "0" }
+        uuid: testUUID,
+        timestamp: 0
       }
     })).Item;
     expect(result).toEqual({
-      uuid: { S: testUUID },
-      timestamp: { N: "0" },
-      nickname: { S: "baba" },
-      lastConnected: { N: expect.anything() },
-      email: { S: "booey@email.com" },
-      connection: { S: "connString" },
-      ip: { S: "127.0.0.1" }
+      uuid: testUUID,
+      timestamp: 0,
+      nickname: "baba",
+      lastConnected: expect.any(Number),
+      email: "booey@email.com",
+      connection: "connString",
+      ip: "127.0.0.1",
+      lastRequestsServed: DDC.createSet(["null"])
     });
     let andiItem = await utils.andiItem();
-    expect(andiItem.conversations.M[testUUID].S).toEqual("baba");
+    expect(andiItem.conversations[testUUID]).toEqual("baba");
   });
   test("updateConversation updates the last connected time, connection string, and IP address", async () => {
     let time = +new Date();
@@ -92,9 +100,9 @@ describe("utils", () => {
       ip: "127.0.0.2"
     });
     let andiItem = await utils.andiItem();
-    expect(+andiItem.lastConnected.N).not.toBeLessThan(time);
-    expect(andiItem.connection.S).toEqual("testConnectionString");
-    expect(andiItem.ip.S).toEqual("127.0.0.2");
+    expect(+andiItem.lastConnected).not.toBeLessThan(time);
+    expect(andiItem.connection).toEqual("testConnectionString");
+    expect(andiItem.ip).toEqual("127.0.0.2");
   });
   describe("markUUIDUnread", () => {
     it("adds the uuid to the unread list when unread is true", async () => {
@@ -103,14 +111,14 @@ describe("utils", () => {
       await utils.markUUIDUnread(testUUID, true);
       let newAndiItem = await utils.andiItem();
       expect(newAndiItem).not.toEqual(oldAndiItem);
-      expect(newAndiItem.unread.SS).toEqual(expect.arrayContaining([testUUID]));
+      expect(newAndiItem.unread.values).toEqual(expect.arrayContaining([testUUID]));
     });
     it("removes the uuid from the unread list when unread is false", async () => {
       const testUUID = "bababooey-markUUIDUnread-2";
       await utils.markUUIDUnread(testUUID, true);
       await utils.markUUIDUnread(testUUID, false);
       let andiItem = await utils.andiItem();
-      expect(andiItem.unread.SS).not.toEqual(expect.arrayContaining([testUUID]));
+      expect(andiItem.unread).not.toEqual(expect.arrayContaining([testUUID]));
     });
     it("doesn't error when marking read if the given uuid doesn't exist", async () => {
       const testUUID = "bababooey-markUUIDUnread-3";
@@ -131,19 +139,19 @@ describe("utils", () => {
         connection: "connString",
         ip: "127.0.0.1"
       });
-      let time = await utils.addMessageToConversation({ from: testUUID, to: "andi", msg: "testing message" });
-      let result = await utils.dynamo("getItem", {
+      let timestamp = await utils.addMessageToConversation({ from: testUUID, to: "andi", msg: "testing message" });
+      let result = await utils.dynamo("get", {
         Key: {
-          uuid: { S: testUUID },
-          timestamp: { N: time.toString() }
+          uuid: testUUID,
+          timestamp
         }
       });
       expect(result.Item).toBeDefined();
       result = result.Item;
       expect(result).toEqual(
         expect.objectContaining({
-          type: { S: "to" },
-          msg: { S: "testing message" }
+          type: "to",
+          msg: "testing message"
         })
       );
     });
@@ -158,19 +166,19 @@ describe("utils", () => {
         ip: "127.0.0.1"
       });
       await utils.addMessageToConversation({ from: testUUID, to: "andi", msg: "testing message" });
-      let time = await utils.addMessageToConversation({ from: "andi", to: testUUID, msg: "hello" });
-      let result = await utils.dynamo("getItem", {
+      let timestamp = await utils.addMessageToConversation({ from: "andi", to: testUUID, msg: "hello" });
+      let result = await utils.dynamo("get", {
         Key: {
-          uuid: { S: testUUID },
-          timestamp: { N: time.toString() }
+          uuid: testUUID,
+          timestamp
         }
       });
       expect(result.Item).toBeDefined();
       result = result.Item;
       expect(result).toEqual(
         expect.objectContaining({
-          type: { S: "from" },
-          msg: { S: "hello" }
+          type: "from",
+          msg: "hello"
         })
       );
     });
@@ -187,7 +195,7 @@ describe("utils", () => {
         ip: "127.0.0.1"
       });
       await utils.addMessageToConversation({ from: testUUID, to: "andi", msg: "testing message" });
-      let time = await utils.addMessageToConversation({ from: "andi", to: testUUID, msg: "hello" });
+      await utils.addMessageToConversation({ from: "andi", to: testUUID, msg: "hello" });
       let messages = await utils.getAllMessagesWith(testUUID);
       expect(messages.length).toEqual(2);
     });
@@ -217,7 +225,7 @@ describe("utils", () => {
       };
     });
     it("sends a message to andi correctly", async () => {
-      let andiConnectionString = (await utils.andiItem()).connection.S;
+      let andiConnectionString = (await utils.andiItem()).connection;
       let result = await utils.sendResponse({
         from: "bababooey",
         to: "andi",

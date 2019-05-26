@@ -1,10 +1,9 @@
 const AWS = require("aws-sdk");
 
-let DDB = new AWS.DynamoDB({ apiVersion: "2012-10-08", region: "us-east-1" });
+let DynamoDocumentClient = new AWS.DynamoDB.DocumentClient({ apiVersion: "2012-10-08", region: "us-east-1" });
 
-// Use module.exports.DDB so DDB can be swapped out at test time
 let dynamo = async (action, params) =>
-  await module.exports.DDB[action]({
+  await module.exports.DynamoDocumentClient[action]({
     TableName: "DuroLiveChat",
     ...params
   }).promise();
@@ -20,48 +19,45 @@ let JSONReply = (type, result, code = 200) => ({
 let JSONError = msg => JSONReply("error", msg || "invalid");
 
 let andiKey = {
-  uuid: { S: "andi" },
-  timestamp: { N: "0" }
+  uuid: "andi",
+  timestamp: 0
 };
 
-let andiItem = async () => {
-  return (await dynamo("getItem", {
-    Key: andiKey
-  })).Item;
-};
+let andiItem = async () => (await dynamo("get", { Key: andiKey })).Item;
 
 let createConversation = async ({ uuid, nickname, email, connection, ip }) => {
-  await dynamo("putItem", {
+  await dynamo("put", {
     Item: {
-      uuid: { S: uuid },
-      timestamp: { N: "0" },
-      nickname: { S: nickname },
-      email: { S: email },
-      connection: { S: connection },
-      lastConnected: { N: `${+new Date()}` },
-      ip: { S: ip }
+      uuid,
+      timestamp: 0,
+      nickname,
+      email,
+      connection,
+      lastConnected: 0,
+      ip,
+      lastRequestsServed: module.exports.DynamoDocumentClient.createSet(["null"])
     }
   });
-  await dynamo("updateItem", {
+  await dynamo("update", {
     Key: andiKey,
     UpdateExpression: "SET conversations.#uuid = :nickname",
     ExpressionAttributeNames: { "#uuid": uuid },
-    ExpressionAttributeValues: { ":nickname": { S: nickname } }
+    ExpressionAttributeValues: { ":nickname": nickname }
   });
 };
 
 let updateConversation = async ({ uuid, connection, ip }) =>
-  await dynamo("updateItem", {
+  await dynamo("update", {
     Key: {
-      uuid: { S: uuid },
-      timestamp: { N: "0" }
+      uuid,
+      timestamp: 0
     },
     UpdateExpression: "SET #conn = :conn, lastConnected = :timestamp, #ip = :ip",
     ExpressionAttributeNames: { "#conn": "connection", "#ip": "ip" },
     ExpressionAttributeValues: {
-      ":conn": { S: connection },
-      ":timestamp": { N: `${+new Date()}` },
-      ":ip": { S: ip }
+      ":conn": connection,
+      ":timestamp": +new Date(),
+      ":ip": ip
     }
   });
 
@@ -72,29 +68,29 @@ let markUUIDUnread = async (uuid, unread) => {
   if (unread) {
     updateExpression = "ADD unread :uuid";
   }
-  await dynamo("updateItem", {
+  await dynamo("update", {
     Key: andiKey,
     UpdateExpression: updateExpression,
-    ExpressionAttributeValues: { ":uuid": { SS: [uuid] } }
+    ExpressionAttributeValues: { ":uuid": module.exports.DynamoDocumentClient.createSet([uuid]) }
   });
 };
 
 let addMessageToConversation = async ({ from, to, msg }) => {
   // assume message is from user to andi
-  let time = +new Date();
+  let timestamp = +new Date();
   let obj = {
-    uuid: { S: from },
-    timestamp: { N: `${time}` },
-    msg: { S: msg },
-    type: { S: "to" }
+    uuid: from,
+    timestamp,
+    msg,
+    type: "to"
   };
   if (from == "andi") {
     // message is from andi
-    obj.uuid.S = to;
-    obj.type.S = "from";
+    obj.uuid = to;
+    obj.type = "from";
   }
-  await dynamo("putItem", { Item: obj });
-  return time;
+  await dynamo("put", { Item: obj });
+  return timestamp;
 };
 
 let getAllMessagesWith = async uuid => {
@@ -104,15 +100,15 @@ let getAllMessagesWith = async uuid => {
       "#uuid": "uuid"
     },
     ExpressionAttributeValues: {
-      ":uuid": { S: uuid }
+      ":uuid": uuid
     }
   });
   if (query.Items.length == 0) return [];
   query.Items.shift(); // remove the initial conversation creation message
   return query.Items.map(item => ({
-    msg: item.msg.S,
-    type: item.type.S,
-    timestamp: item.timestamp.N
+    msg: item.msg,
+    type: item.type,
+    timestamp: item.timestamp
   }));
 };
 
@@ -121,12 +117,12 @@ let sendResponse = async ({ from, to, msg, ws }) => {
     type: "reply",
     msg
   };
-  let connectionString = (await dynamo("getItem", {
+  let connectionString = (await dynamo("get", {
     Key: {
-      uuid: { S: to },
-      timestamp: { N: "0" }
+      uuid: to,
+      timestamp: 0
     }
-  })).Item.connection.S;
+  })).Item.connection;
   if (to == "andi") obj.uuid = from;
   try {
     await ws
@@ -149,7 +145,7 @@ let sendResponse = async ({ from, to, msg, ws }) => {
 module.exports = {
   JSONReply,
   JSONError,
-  DDB,
+  DynamoDocumentClient,
   dynamo,
   andiItem,
   createConversation,
