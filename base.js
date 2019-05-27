@@ -29,7 +29,8 @@ let userHandler = async ({ event, body, uuid, connection, ip, requestID }) => {
       return JSONReply("history", await utils.getAllMessagesWith(uuid));
     case "send":
       if (!body.msg) return JSONError();
-      if (!utils.isUniqueRequest(uuid, requestID)) return JSONReply("duplicate");
+      let unique = await utils.isUniqueRequest(uuid, requestID);
+      if (!unique) return JSONReply("duplicate");
       await utils.addMessageToConversation({
         from: uuid,
         to: "andi",
@@ -60,7 +61,8 @@ let adminHandler = async ({ event, body, uuid, connection, ip, requestID }) => {
       return JSONReply("history", await utils.getAllMessagesWith(body.for));
     case "send":
       if (!body.msg || !body.uuidTo) return JSONError();
-      if (!utils.isUniqueRequest(uuid, requestID)) return JSONReply("duplicate");
+      let unique = await utils.isUniqueRequest(uuid, requestID);
+      if (!unique) return JSONReply("duplicate");
       await utils.addMessageToConversation({
         from: "andi",
         to: body.uuidTo,
