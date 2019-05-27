@@ -4,9 +4,6 @@ const replServer = require("repl");
 const ENDPOINT = process.env.ENDPOINT;
 const AUTH = process.env.PASSWORD;
 
-// utils has to be idempotent...
-// replace timestamp with request ID
-
 const ws = new WebSocket(ENDPOINT);
 
 let conversations = [];
@@ -33,9 +30,10 @@ let eval = msg => {
     shouldSend = false;
   }
   if (shouldSend) {
+    console.log("\n send \n");
     send({ action: "send", msg, uuidTo: selectedConvo.uuid });
-    console.log("SENT MESSAGE!");
   }
+  repl.clearBufferedCommand();
   repl.displayPrompt();
 };
 
@@ -76,11 +74,11 @@ ws.on("message", data => {
   switch (json.type) {
     case "andiItem":
       conversations = [];
-      for (let uuid in json.result.conversations.M) {
+      for (let uuid in json.result.conversations) {
         conversations.push({
           uuid,
-          nickname: json.result.conversations.M[uuid].S,
-          unread: json.result.unread.SS.includes(uuid)
+          nickname: json.result.conversations[uuid],
+          unread: json.result.unread.values.includes(uuid)
         });
       }
       let i = 0;
