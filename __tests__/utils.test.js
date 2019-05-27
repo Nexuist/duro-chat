@@ -85,7 +85,8 @@ describe("utils", () => {
       email: "booey@email.com",
       connection: "connString",
       ip: "127.0.0.1",
-      lastRequestsServed: DDC.createSet(["null"])
+      lastRequestsServed: DDC.createSet(["null"]),
+      updates: 0
     });
     let andiItem = await utils.andiItem();
     expect(andiItem.conversations[testUUID]).toEqual("baba");
@@ -156,6 +157,25 @@ describe("utils", () => {
         ProjectionExpression: "lastRequestsServed"
       })).Item.lastRequestsServed.values.length;
       expect(n).toEqual(5);
+    });
+    it.only("is actually idempotent", async () => {
+      let testUUID = "bababooey-isUniqueRequest-idempotent";
+      // make sure there are no existing conversations from previous test runs
+      await utils.dynamo("delete", {
+        Key: {
+          uuid: testUUID,
+          timestamp: 0
+        }
+      });
+      await createFakeConversation(testUUID);
+      // run these all concurrently to simulate multiple requests at once
+      let results = await Promise.all([
+        utils.isUniqueRequest(testUUID, "123"),
+        utils.isUniqueRequest(testUUID, "123"),
+        utils.isUniqueRequest(testUUID, "123")
+      ]);
+      console.log(results);
+      expect(results).toEqual([true, false, false]);
     });
   });
   describe("addMessageToConversation", () => {

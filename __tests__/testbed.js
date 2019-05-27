@@ -22,12 +22,45 @@ let printCall = async json => {
 
 let header = msg => console.log(`--- ${msg.toUpperCase()} ---`);
 
+const createFakeConversation = async uuid => {
+  await utils.createConversation({
+    uuid,
+    nickname: "baba",
+    email: "booey@email.com",
+    connection: "connString",
+    ip: "127.0.0.1"
+  });
+};
+
 let main = async () => {
   utils.DynamoDocumentClient = new AWS.DynamoDB.DocumentClient({
     apiVersion: "2012-10-08",
-    region: "us-east-1",
-    endpoint: "http://localhost:4569"
+    region: "us-east-1"
+    // endpoint: "http://localhost:4569"
   });
+  let testUUID = "bababooey-isUniqueRequest-idempotent";
+  await utils.dynamo("delete", {
+    Key: {
+      uuid: testUUID,
+      timestamp: 0
+    }
+  });
+  await createFakeConversation(testUUID);
+  // run these all concurrently to simulate multiple requests at once
+  let r1, r2, r3;
+  utils.isUniqueRequest(testUUID, "23").then(r => (r1 = r));
+  utils.isUniqueRequest(testUUID, "23").then(r => (r2 = r));
+  utils.isUniqueRequest(testUUID, "23").then(r => (r3 = r));
+  await new Promise(resolve => setTimeout(resolve, 1000));
+  console.log(r1, r2, r3);
+  console.log(
+    (await utils.dynamo("get", {
+      Key: {
+        uuid: testUUID,
+        timestamp: 0
+      }
+    })).Item
+  );
 };
 
 main();

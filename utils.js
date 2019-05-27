@@ -35,7 +35,7 @@ let createConversation = async ({ uuid, nickname, email, connection, ip }) => {
       connection,
       lastConnected: 0,
       ip,
-      lastRequestsServed: module.exports.DynamoDocumentClient.createSet(["null"])
+      lastRequestServed: "null"
     }
   });
   await dynamo("update", {
@@ -81,22 +81,30 @@ let isUniqueRequest = async (uuid, requestID) => {
     uuid,
     timestamp: 0
   };
-  let lastRequestsServed = await dynamo("get", {
+  let convo = await dynamo("get", { Key, ProjectionExpression: "lastRequestServed" });
+  if (!convo.Item) return true; // unknown uuid
+  let { lastRequestServed } = convo.Item;
+  console.log(`last: ${lastRequestServed} curr: ${requestID}`);
+  if (lastRequestServed == requestID) return false;
+  let updateParams = {
     Key,
-    ProjectionExpression: "lastRequestsServed"
-  });
-  if (!lastRequestsServed.Item) return true; // unknown uuid
-  lastRequestsServed = lastRequestsServed.Item.lastRequestsServed.values;
-  if (lastRequestsServed.includes(requestID)) return false;
-  lastRequestsServed.push(requestID); // add new request
-  if (lastRequestsServed.length >= 6) lastRequestsServed.shift(); // drop the oldest saved id if there are too many
-  await dynamo("update", {
-    Key,
-    UpdateExpression: "SET lastRequestsServed = :newSet",
+    UpdateExpression: "SET lastRequestServed = :requestID",
+    ConditionExpression: "lastRequestServed = :oldRequestID",
     ExpressionAttributeValues: {
-      ":newSet": module.exports.DynamoDocumentClient.createSet(lastRequestsServed)
+      ":oldRequestID": lastRequestServed,
+      ":requestID": requestID
     }
-  });
+  };
+  try {
+    await dynamo("update", updateParams);
+  } catch (err) {
+    if (err.code != "ConditionalCheckFailedException") throw err;
+    console.log("INCORRECT UPDATE");
+    let convo = await dynamo("get", { Key, ProjectionExpression: "lastRequestServed" });
+    console.log("OLD:", lastRequestServed);
+    console.log("NEW:", convo.Item.lastRequestServed);
+    return false; // the conversation was updated by the time we tried to update it, so just invalidate everything
+  }
   return true;
 };
 
