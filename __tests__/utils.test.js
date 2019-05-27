@@ -158,24 +158,21 @@ describe("utils", () => {
       })).Item.lastRequestsServed.values.length;
       expect(n).toEqual(5);
     });
-    it.only("is actually idempotent", async () => {
+    it("is actually idempotent", async () => {
       let testUUID = "bababooey-isUniqueRequest-idempotent";
-      // make sure there are no existing conversations from previous test runs
-      await utils.dynamo("delete", {
-        Key: {
-          uuid: testUUID,
-          timestamp: 0
-        }
-      });
       await createFakeConversation(testUUID);
       // run these all concurrently to simulate multiple requests at once
-      let results = await Promise.all([
-        utils.isUniqueRequest(testUUID, "123"),
-        utils.isUniqueRequest(testUUID, "123"),
-        utils.isUniqueRequest(testUUID, "123")
-      ]);
-      console.log(results);
-      expect(results).toEqual([true, false, false]);
+      let tryRequests = async (...reqs) => {
+        reqs = reqs.map(id => utils.isUniqueRequest(testUUID, id));
+        let results = await Promise.all(reqs);
+        let trues = results.filter(v => v).length;
+        return trues;
+      };
+      let sameRequests = await tryRequests("123", "123", "123");
+      let uniqueRequests = await tryRequests("1", "2", "3");
+      // regardless of request IDs, only one request should win the race and ultimately be accepted
+      expect(sameRequests).toEqual(1);
+      expect(uniqueRequests).toEqual(1);
     });
   });
   describe("addMessageToConversation", () => {

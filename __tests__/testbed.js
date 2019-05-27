@@ -35,8 +35,8 @@ const createFakeConversation = async uuid => {
 let main = async () => {
   utils.DynamoDocumentClient = new AWS.DynamoDB.DocumentClient({
     apiVersion: "2012-10-08",
-    region: "us-east-1"
-    // endpoint: "http://localhost:4569"
+    region: "us-east-1",
+    endpoint: "http://localhost:4569"
   });
   let testUUID = "bababooey-isUniqueRequest-idempotent";
   await utils.dynamo("delete", {
@@ -47,12 +47,13 @@ let main = async () => {
   });
   await createFakeConversation(testUUID);
   // run these all concurrently to simulate multiple requests at once
-  let r1, r2, r3;
-  utils.isUniqueRequest(testUUID, "23").then(r => (r1 = r));
-  utils.isUniqueRequest(testUUID, "23").then(r => (r2 = r));
-  utils.isUniqueRequest(testUUID, "23").then(r => (r3 = r));
-  await new Promise(resolve => setTimeout(resolve, 1000));
-  console.log(r1, r2, r3);
+  let results = await Promise.all([
+    utils.isUniqueRequest(testUUID, "test"),
+    utils.isUniqueRequest(testUUID, "test"),
+    utils.isUniqueRequest(testUUID, "test"),
+    utils.isUniqueRequest(testUUID, "test")
+  ]);
+  console.log(results);
   console.log(
     (await utils.dynamo("get", {
       Key: {
