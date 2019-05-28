@@ -29,10 +29,7 @@ let eval = msg => {
     console.error("\nMessage too short!");
     shouldSend = false;
   }
-  if (shouldSend) {
-    console.log("\n send \n");
-    send({ action: "send", msg, uuidTo: selectedConvo.uuid });
-  }
+  if (shouldSend) send({ action: "send", msg, uuidTo: selectedConvo.uuid });
   repl.clearBufferedCommand();
   repl.displayPrompt();
 };
