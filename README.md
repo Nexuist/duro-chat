@@ -6,7 +6,7 @@ Try it out: https://duro.me/live
 
 For running unit tests, make sure you have [LocalStack](https://github.com/localstack/localstack) and [jest](https://jestjs.io/) installed, and then run `npm test`.
 
-Everything you want to know about the service is detailed in [the article about it](https://duro.me/stories/web/technical/updated-live-chat), so I highly recommend reading that through. It should help with understanding the codebase.
+Everything you want to know about the service is detailed in [the article about it](https://duro.me/stories/2019/05/26/updated-live-chat), so I highly recommend reading that through. It should help with understanding the codebase.
 
 ### License
 
